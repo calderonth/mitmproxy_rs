@@ -71,7 +71,8 @@ impl PacketSourceConf for WireGuardConf {
                 Some(25),
                 index,
                 None,
-            );
+            )
+            .map_err(|e| anyhow!("Failed to create WireGuard tunnel: {e}"))?;
 
             let peer = Arc::new(Mutex::new(WireGuardPeer {
                 tunnel,
