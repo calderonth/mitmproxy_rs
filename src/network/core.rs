@@ -12,6 +12,7 @@ use crate::messages::{NetworkCommand, NetworkEvent, SmolPacket, TransportCommand
 use crate::network::icmp::{handle_icmpv4_echo_request, handle_icmpv6_echo_request};
 
 use crate::network::tcp::TcpHandler;
+use crate::network::tcp::TcpTuning;
 use crate::network::udp::{UdpHandler, UdpPacket};
 
 pub struct NetworkStack<'a> {
@@ -21,9 +22,9 @@ pub struct NetworkStack<'a> {
 }
 
 impl NetworkStack<'_> {
-    pub fn new(net_tx: Sender<NetworkCommand>) -> Self {
+    pub fn new(net_tx: Sender<NetworkCommand>, tcp_tuning: TcpTuning) -> Self {
         Self {
-            tcp: TcpHandler::new(net_tx.clone()),
+            tcp: TcpHandler::new(net_tx.clone(), tcp_tuning),
             udp: UdpHandler::new(),
             net_tx,
         }

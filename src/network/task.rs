@@ -11,6 +11,7 @@ use tokio::task::JoinHandle;
 
 use crate::messages::{NetworkCommand, NetworkEvent, TransportCommand, TransportEvent};
 use crate::network::core::NetworkStack;
+use crate::network::tcp::TcpTuning;
 use crate::shutdown;
 
 pub struct NetworkTask<'a> {
@@ -28,6 +29,7 @@ pub fn add_network_layer(
     transport_events_tx: Sender<TransportEvent>,
     transport_commands_rx: UnboundedReceiver<TransportCommand>,
     shutdown: shutdown::Receiver,
+    tcp_tuning: TcpTuning,
 ) -> (
     JoinHandle<Result<()>>,
     Sender<NetworkEvent>,
@@ -43,6 +45,7 @@ pub fn add_network_layer(
         transport_events_tx,
         transport_commands_rx,
         shutdown,
+        tcp_tuning,
     );
     let h = tokio::spawn(Box::pin(async move { task.run().await }));
     (h, network_events_tx, network_commands_rx)
@@ -55,8 +58,9 @@ impl NetworkTask<'_> {
         py_tx: Sender<TransportEvent>,
         py_rx: UnboundedReceiver<TransportCommand>,
         shutdown: shutdown::Receiver,
+        tcp_tuning: TcpTuning,
     ) -> Self {
-        let io = NetworkStack::new(net_tx.clone());
+        let io = NetworkStack::new(net_tx.clone(), tcp_tuning);
         Self {
             net_tx,
             net_rx,

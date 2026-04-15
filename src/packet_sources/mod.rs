@@ -4,6 +4,7 @@ use crate::messages::{
     NetworkCommand, NetworkEvent, SmolPacket, TransportCommand, TransportEvent, TunnelInfo,
 };
 use crate::network::add_network_layer;
+use crate::network::TcpTuning;
 use crate::{MAX_PACKET_SIZE, ipc, shutdown};
 use anyhow::{Context, Result, anyhow};
 use prost::Message;
@@ -55,7 +56,7 @@ async fn forward_packets<T: AsyncRead + AsyncWrite + Unpin>(
 ) -> Result<()> {
     let mut buf = Vec::with_capacity(IPC_BUF_SIZE);
     let (mut network_task_handle, net_tx, mut net_rx) =
-        add_network_layer(transport_events_tx, transport_commands_rx, shutdown);
+        add_network_layer(transport_events_tx, transport_commands_rx, shutdown, TcpTuning::default());
 
     loop {
         buf.clear();

@@ -79,6 +79,7 @@ pub fn start_wireguard_server(
         listen_addr: SocketAddr::from((host, port)),
         private_key,
         peer_public_keys,
+        tcp_tuning: Default::default(),
     };
     pyo3_async_runtimes::tokio::future_into_py(py, async move {
         let (server, local_addr) = Server::init(conf, handle_tcp_stream, handle_udp_stream).await?;

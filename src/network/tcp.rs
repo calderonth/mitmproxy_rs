@@ -41,6 +41,31 @@ struct SocketData {
     addr_tuple: (SocketAddr, SocketAddr),
 }
 
+/// Tunable TCP socket parameters for smoltcp.
+#[derive(Debug, Clone)]
+pub struct TcpTuning {
+    /// Receive buffer size in bytes (default: 64 KB).
+    pub rx_buffer_size: usize,
+    /// Transmit buffer size in bytes (default: 64 KB).
+    pub tx_buffer_size: usize,
+    /// Disable Nagle's algorithm (default: false).
+    pub nodelay: bool,
+    /// Keep-alive interval, or None to disable (default: Some(28s)).
+    pub keep_alive_secs: Option<u64>,
+    /// Socket timeout (default: 60s).
+    pub timeout_secs: u64,
+}
+impl Default for TcpTuning {
+    fn default() -> Self {
+        Self {
+            rx_buffer_size: 64 * 1024,
+            tx_buffer_size: 64 * 1024,
+            nodelay: false,
+            keep_alive_secs: Some(28),
+            timeout_secs: 60,
+        }
+    }
+}
 pub struct TcpHandler<'a> {
     connection_id_generator: ConnectionIdGenerator,
     iface: Interface,
@@ -49,10 +74,11 @@ pub struct TcpHandler<'a> {
     socket_data: HashMap<ConnectionId, SocketData>,
     remove_conns: Vec<ConnectionId>,
     active_connections: HashSet<(SocketAddr, SocketAddr)>,
+    tuning: TcpTuning,
 }
 
 impl TcpHandler<'_> {
-    pub fn new(net_tx: Sender<NetworkCommand>) -> Self {
+    pub fn new(net_tx: Sender<NetworkCommand>, tuning: TcpTuning) -> Self {
         let mut device = VirtualDevice::new(net_tx);
 
         let config = Config::new(HardwareAddress::Ip);
@@ -85,6 +111,7 @@ impl TcpHandler<'_> {
             active_connections: HashSet::new(),
             connection_id_generator: ConnectionIdGenerator::tcp(),
             remove_conns: Vec::new(),
+            tuning,
         }
     }
 
@@ -125,13 +152,16 @@ impl TcpHandler<'_> {
             && !self.active_connections.contains(&(src_addr, dst_addr))
         {
             let mut socket = tcp::Socket::new(
-                tcp::SocketBuffer::new(vec![0u8; 64 * 1024]),
-                tcp::SocketBuffer::new(vec![0u8; 64 * 1024]),
+                tcp::SocketBuffer::new(vec![0u8; self.tuning.rx_buffer_size]),
+                tcp::SocketBuffer::new(vec![0u8; self.tuning.tx_buffer_size]),
             );
 
             socket.listen(dst_addr)?;
-            socket.set_timeout(Some(smoltcp::time::Duration::from_secs(60)));
-            socket.set_keep_alive(Some(smoltcp::time::Duration::from_secs(28)));
+            socket.set_timeout(Some(smoltcp::time::Duration::from_secs(self.tuning.timeout_secs)));
+            if let Some(ka) = self.tuning.keep_alive_secs {
+                socket.set_keep_alive(Some(smoltcp::time::Duration::from_secs(ka)));
+            }
+            socket.set_nagle_enabled(!self.tuning.nodelay);
 
             let handle = self.sockets.add(socket);
 

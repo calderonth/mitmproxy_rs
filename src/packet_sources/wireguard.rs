@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::messages::{
     NetworkCommand, NetworkEvent, SmolPacket, TransportCommand, TransportEvent, TunnelInfo,
 };
-use crate::network::{MAX_PACKET_SIZE, add_network_layer};
+use crate::network::{MAX_PACKET_SIZE, TcpTuning, add_network_layer};
 use crate::packet_sources::{PacketSourceConf, PacketSourceTask};
 use anyhow::{Context, Result, anyhow};
 use boringtun::noise::{
@@ -39,6 +39,7 @@ pub struct WireGuardConf {
     pub listen_addr: SocketAddr,
     pub private_key: StaticSecret,
     pub peer_public_keys: Vec<PublicKey>,
+    pub tcp_tuning: TcpTuning,
 }
 
 impl PacketSourceConf for WireGuardConf {
@@ -56,7 +57,7 @@ impl PacketSourceConf for WireGuardConf {
         shutdown: shutdown::Receiver,
     ) -> Result<(Self::Task, Self::Data)> {
         let (network_task_handle, net_tx, net_rx) =
-            add_network_layer(transport_events_tx, transport_commands_rx, shutdown);
+            add_network_layer(transport_events_tx, transport_commands_rx, shutdown, self.tcp_tuning);
 
         // initialize WireGuard server
         let mut peers_by_idx = HashMap::new();
@@ -71,8 +72,7 @@ impl PacketSourceConf for WireGuardConf {
                 Some(25),
                 index,
                 None,
-            )
-            .map_err(|e| anyhow!("Failed to create WireGuard tunnel: {e}"))?;
+            );
 
             let peer = Arc::new(Mutex::new(WireGuardPeer {
                 tunnel,

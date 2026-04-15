@@ -2,6 +2,7 @@ use crate::messages::{
     NetworkCommand, NetworkEvent, SmolPacket, TransportCommand, TransportEvent, TunnelInfo,
 };
 use crate::network::{MAX_PACKET_SIZE, add_network_layer};
+use crate::network::TcpTuning;
 use crate::packet_sources::{PacketSourceConf, PacketSourceTask};
 use crate::shutdown;
 use anyhow::{Context, Result};
@@ -32,7 +33,7 @@ impl PacketSourceConf for TunConf {
         let (device, tun_name) = create_tun_device(self.tun_name)?;
 
         let (network_task_handle, net_tx, net_rx) =
-            add_network_layer(transport_events_tx, transport_commands_rx, shutdown);
+            add_network_layer(transport_events_tx, transport_commands_rx, shutdown, TcpTuning::default());
 
         Ok((
             TunTask {

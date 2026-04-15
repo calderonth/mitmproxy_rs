@@ -7,6 +7,7 @@ mod virtual_device;
 mod core;
 mod icmp;
 mod tcp;
+pub use tcp::TcpTuning;
 #[cfg(test)]
 mod tests;
 pub(crate) mod udp;
