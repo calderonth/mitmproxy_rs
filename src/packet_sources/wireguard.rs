@@ -75,7 +75,7 @@ impl PacketSourceConf for WireGuardConf {
             );
 
             let peer = Arc::new(Mutex::new(WireGuardPeer {
-                tunnel tunnel?,
+                tunnel: tunnel?,
                 endpoint: None,
             }));
 
